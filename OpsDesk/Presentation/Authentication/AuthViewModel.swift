@@ -11,13 +11,10 @@ enum AuthState {
     case signedIn
 }
 
-protocol AuthRepository {
-    func hasSession() async -> Bool
-}
-
 @MainActor
 final class AuthViewModel {
     private let repository: any AuthRepository
+    private var isCheckingSession = false
     private(set) var state: AuthState = .checkingSession
     
     init(repository: any AuthRepository) {
@@ -25,6 +22,10 @@ final class AuthViewModel {
     }
     
     func checkSession() async {
+        guard !isCheckingSession else { return }
+        isCheckingSession = true
+        defer { isCheckingSession = false }
+
         let hasSession = await repository.hasSession()
         state = hasSession ? .signedIn : .signedOut
     }

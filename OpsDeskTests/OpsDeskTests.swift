@@ -8,6 +8,34 @@
 import Testing
 @testable import OpsDesk
 
+@MainActor
+private final class SuspendedAuthRepository: AuthRepository {
+    private(set) var callCount = 0
+    private var sessionContinuation: CheckedContinuation<Bool, Never>?
+    private var startedContinuation: CheckedContinuation<Void, Never>?
+
+    func hasSession() async -> Bool {
+        callCount += 1
+        guard callCount == 1 else { return false }
+
+        return await withCheckedContinuation { continuation in
+            sessionContinuation = continuation
+            startedContinuation?.resume()
+            startedContinuation = nil
+        }
+    }
+
+    func waitUntilStarted() async {
+        guard callCount == 0 else { return }
+        await withCheckedContinuation { startedContinuation = $0 }
+    }
+
+    func completeFirstCheck(sessionExists: Bool) {
+        sessionContinuation?.resume(returning: sessionExists)
+        sessionContinuation = nil
+    }
+}
+
 private struct StubAuthRepository: AuthRepository {
     var sessionExists = false
     
@@ -17,6 +45,27 @@ private struct StubAuthRepository: AuthRepository {
 }
 
 struct OpsDeskTests {
+    @Test @MainActor
+    func overlappingSessionChecksDoNotDuplicateWork() async {
+        let repository = SuspendedAuthRepository()
+        let viewModel = AuthViewModel(repository: repository)
+        let firstCheck = Task { await viewModel.checkSession() }
+        await repository.waitUntilStarted()
+
+        await viewModel.checkSession()
+
+        #expect(repository.callCount == 1)
+        #expect(viewModel.state == .checkingSession)
+
+        repository.completeFirstCheck(sessionExists: true)
+        await firstCheck.value
+        #expect(viewModel.state == .signedIn)
+
+        // A completed check must not prevent a later lifecycle check.
+        await viewModel.checkSession()
+        #expect(repository.callCount == 2)
+        #expect(viewModel.state == .signedOut)
+    }
     
     @Test @MainActor
     func checkSessionWithoutSavedUserSignsOut() async {
