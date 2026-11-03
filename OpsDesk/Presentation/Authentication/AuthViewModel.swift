@@ -8,6 +8,7 @@
 enum AuthState {
     case checkingSession
     case signedOut
+    case signedIn
 }
 
 protocol AuthRepository {
@@ -24,6 +25,7 @@ final class AuthViewModel {
     }
     
     func checkSession() async {
-        
+        let hasSession = await repository.hasSession()
+        state = hasSession ? .signedIn : .signedOut
     }
 }
