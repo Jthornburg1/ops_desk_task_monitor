@@ -6,13 +6,23 @@
 //
 
 import Testing
+@testable import OpsDesk
+
+private struct StubAuthRepository: AuthRepository {
+    func hasSession() async -> Bool {
+        false
+    }
+}
 
 struct OpsDeskTests {
-
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
-        // Swift Testing Documentation
-        // https://developer.apple.com/documentation/testing
+    
+    @Test
+    @MainActor
+    func checkSessionWithoutSavedUserSignsOut() async {
+        let repository = StubAuthRepository()
+        let viewModel = AuthViewModel(repository: repository)
+        
+        await viewModel.checkSession()
+        #expect(viewModel.state == .signedOut)
     }
-
 }
