@@ -4,8 +4,10 @@ struct TaskDashboardView: View {
     @State private var viewModel: TaskDashboardViewModel
     @State private var reloadID = 0
 
-    init(service: any TaskService) {
-        _viewModel = State(initialValue: TaskDashboardViewModel(service: service))
+    init(service: any TaskService, userID: String) {
+        _viewModel = State(initialValue: TaskDashboardViewModel(
+            service: service,
+            completionService: UserDefaultsTaskCompletionService(userID: userID)))
     }
 
     var body: some View {
@@ -30,7 +32,9 @@ struct TaskDashboardView: View {
 
                 ForEach(viewModel.filteredTasks) { task in
                     NavigationLink {
-                        TaskDetailView(task: task)
+                        TaskDetailView(task: Binding(
+                            get: { viewModel.tasks.first(where: { $0.id == task.id }) ?? task },
+                            set: { viewModel.setCompleted($0.completed, taskID: task.id) }))
                     } label: {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(task.title)

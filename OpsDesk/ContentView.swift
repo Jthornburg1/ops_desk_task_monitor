@@ -28,31 +28,37 @@ struct ContentView: View {
                     .disabled(viewModel.isSigningIn)
                 }
             case .signedIn:
-                NavigationStack {
-                    VStack {
-                        TaskDashboardView(service: taskService)
-                        if let message = viewModel.signOutMessage {
-                            Text(message)
-                                .foregroundStyle(.red)
-                                .padding()
-                                .accessibilityIdentifier("signOutError")
-                        }
-                    }
-                    .navigationTitle("Tasks")
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button {
-                                Task { await viewModel.signOut() }
-                            } label: {
-                                if viewModel.isSigningOut {
-                                    ProgressView("Signing out…")
-                                } else {
-                                    Text("Log out")
-                                }
+                if let userID = viewModel.userID {
+                    NavigationStack {
+                        VStack {
+                            TaskDashboardView(service: taskService, userID: userID)
+                            if let message = viewModel.signOutMessage {
+                                Text(message)
+                                    .foregroundStyle(.red)
+                                    .padding()
+                                    .accessibilityIdentifier("signOutError")
                             }
-                            .disabled(viewModel.isSigningOut)
+                        }
+                        .navigationTitle("Tasks")
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button {
+                                    Task { await viewModel.signOut() }
+                                } label: {
+                                    if viewModel.isSigningOut {
+                                        ProgressView("Signing out…")
+                                    } else {
+                                        Text("Log out")
+                                    }
+                                }
+                                .disabled(viewModel.isSigningOut)
+                            }
                         }
                     }
+                    .id(userID)
+                } else {
+                    ContentUnavailableView("Account unavailable", systemImage: "person.crop.circle.badge.exclamationmark",
+                                           description: Text("Relaunch OpsDesk and sign in again."))
                 }
             }
         }
@@ -63,6 +69,7 @@ struct ContentView: View {
 }
 
 private struct PreviewAuthService: AuthService {
+    func currentUserID() async -> String? { nil }
     func signOut() async -> SignOutOutcome { .failed }
 
     func signIn() async -> SignInOutcome { .failed }

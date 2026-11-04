@@ -5,6 +5,7 @@ import Testing
 
 @MainActor
 private final class LogoutService: AuthService {
+    func currentUserID() async -> String? { "test-user" }
     var outcome: SignOutOutcome = .signedOut
     var count = 0
     var sessionCount = 0

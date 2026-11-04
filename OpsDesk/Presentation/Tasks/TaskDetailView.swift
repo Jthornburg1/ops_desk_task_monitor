@@ -1,19 +1,20 @@
 import SwiftUI
 
 struct TaskDetailView: View {
-    let task: OperationalTask
+    @Binding var task: OperationalTask
 
     var body: some View {
         Form {
-            Section("Task") {
+            Section {
                 Text(task.title)
                     .font(.headline)
                     .textSelection(.enabled)
                 LabeledContent("Task ID", value: String(task.id))
-                LabeledContent("Status") {
-                    Label(task.completed ? "Completed" : "Pending",
-                          systemImage: task.completed ? "checkmark.circle.fill" : "circle")
-                }
+                Toggle("Completed", isOn: $task.completed)
+            } header: {
+                Text("Task")
+            } footer: {
+                Text("Changes are saved on this device for your signed-in account and retained after refresh and relaunch.")
             }
 
             Section("Assigned user") {
@@ -35,16 +36,16 @@ struct TaskDetailView: View {
 
 #Preview("Pending task") {
     NavigationStack {
-        TaskDetailView(task: OperationalTask(
+        TaskDetailView(task: .constant(OperationalTask(
             id: 1, title: "Inspect cooling system", completed: false,
             user: .init(id: 1, name: "Alex Morgan", username: "amorgan",
-                        email: "alex@example.com")))
+                        email: "alex@example.com"))))
     }
 }
 
 #Preview("Completed task without user") {
     NavigationStack {
-        TaskDetailView(task: OperationalTask(
-            id: 2, title: "Review maintenance report", completed: true, user: nil))
+        TaskDetailView(task: .constant(OperationalTask(
+            id: 2, title: "Review maintenance report", completed: true, user: nil)))
     }
 }

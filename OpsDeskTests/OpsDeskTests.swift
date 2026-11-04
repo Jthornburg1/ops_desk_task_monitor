@@ -11,6 +11,7 @@ import Testing
 
 @MainActor
 private final class SuspendedAuthService: AuthService {
+    func currentUserID() async -> String? { "test-user" }
     private(set) var callCount = 0
     private var sessionContinuation: CheckedContinuation<Bool, Never>?
     private var startedContinuation: CheckedContinuation<Void, Never>?
@@ -42,6 +43,7 @@ private final class SuspendedAuthService: AuthService {
 }
 
 private struct StubAuthService: AuthService {
+    func currentUserID() async -> String? { "test-user" }
     var sessionExists = false
     
     func signOut() async -> SignOutOutcome { .failed }

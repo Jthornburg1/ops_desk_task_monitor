@@ -3,20 +3,28 @@ import AWSCognitoAuthPlugin
 
 @MainActor
 final class CognitoAuthService: AuthService {
+    private let fetchUserID: () async throws -> String
     private let hostedSignOut: () async -> any AuthSignOutResult
     private let hostedSignIn: () async throws -> Bool
     private let fetchSession: () async throws -> any AuthSession
 
-    init(fetchSession: @escaping () async throws -> any AuthSession = {
+    init(fetchUserID: @escaping () async throws -> String = {
+        try await Amplify.Auth.getCurrentUser().userId
+    }, fetchSession: @escaping () async throws -> any AuthSession = {
         try await Amplify.Auth.fetchAuthSession()
     }, hostedSignIn: @escaping () async throws -> Bool = {
         try await Amplify.Auth.signInWithWebUI().isSignedIn
     }, hostedSignOut: @escaping () async -> any AuthSignOutResult = {
         await Amplify.Auth.signOut()
     }) {
+        self.fetchUserID = fetchUserID
         self.hostedSignOut = hostedSignOut
         self.hostedSignIn = hostedSignIn
         self.fetchSession = fetchSession
+    }
+
+    func currentUserID() async -> String? {
+        try? await fetchUserID()
     }
 
     func signOut() async -> SignOutOutcome {

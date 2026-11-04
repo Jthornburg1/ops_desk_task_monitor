@@ -18,6 +18,7 @@ enum AuthState {
 final class AuthViewModel {
     @ObservationIgnored private let service: any AuthService
     @ObservationIgnored private var isCheckingSession = false
+    private(set) var userID: String?
     private(set) var state: AuthState = .checkingSession
     
     private(set) var isSigningIn = false
@@ -34,9 +35,11 @@ final class AuthViewModel {
 
         switch await service.signOut() {
         case .signedOut:
+            userID = nil
             signInMessage = nil
             state = .signedOut
         case .locallySignedOut:
+            userID = nil
             signInMessage = "Signed out on this device. Provider sign-out was incomplete; signing in may reuse your browser session."
             state = .signedOut
         case .failed:
@@ -53,7 +56,7 @@ final class AuthViewModel {
 
         switch await service.signIn() {
         case .signedIn:
-            state = .signedIn
+            await identifySignedInUser()
         case .cancelled:
             state = .signedOut
             signInMessage = "Sign-in cancelled. You can try again."
@@ -72,7 +75,23 @@ final class AuthViewModel {
         isCheckingSession = true
         defer { isCheckingSession = false }
 
-        let hasSession = await service.hasSession()
-        state = hasSession ? .signedIn : .signedOut
+        if await service.hasSession() {
+            await identifySignedInUser()
+        } else {
+            userID = nil
+            state = .signedOut
+        }
+    }
+
+    private func identifySignedInUser() async {
+        guard let id = await service.currentUserID(), !id.isEmpty else {
+            userID = nil
+            state = .signedOut
+            signInMessage = "Unable to identify your account. Please sign in again."
+            return
+        }
+        userID = id
+        signInMessage = nil
+        state = .signedIn
     }
 }

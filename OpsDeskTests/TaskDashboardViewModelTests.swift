@@ -32,6 +32,13 @@ private actor DashboardTaskService: TaskService {
 }
 
 @MainActor
+private final class MemoryCompletionService: TaskCompletionService {
+    private var values: [Int: Bool] = [:]
+    func overrides() -> [Int: Bool] { values }
+    func setCompleted(_ completed: Bool, for taskID: Int) { values[taskID] = completed }
+}
+
+@MainActor
 struct TaskDashboardViewModelTests {
     private var example: OperationalTask {
         OperationalTask(id: 1, title: "Inspect cooling", completed: false, user: nil)
@@ -41,7 +48,7 @@ struct TaskDashboardViewModelTests {
     func loadsTasksOnlyOnceUntilExplicitRefresh() async {
         let service = DashboardTaskService()
         await service.configure(values: [example])
-        let model = TaskDashboardViewModel(service: service)
+        let model = TaskDashboardViewModel(service: service, completionService: MemoryCompletionService())
         #expect(!model.hasLoaded)
         await model.loadIfNeeded()
         #expect(model.tasks == [example])
@@ -61,7 +68,7 @@ struct TaskDashboardViewModelTests {
     func initialFailureAllowsRetry() async {
         let service = DashboardTaskService()
         await service.configure(fails: true)
-        let model = TaskDashboardViewModel(service: service)
+        let model = TaskDashboardViewModel(service: service, completionService: MemoryCompletionService())
         await model.loadIfNeeded()
         #expect(model.errorMessage != nil)
         #expect(!model.hasLoaded)
@@ -77,7 +84,7 @@ struct TaskDashboardViewModelTests {
     func refreshFailurePreservesDisplayedTasks() async {
         let service = DashboardTaskService()
         await service.configure(values: [example])
-        let model = TaskDashboardViewModel(service: service)
+        let model = TaskDashboardViewModel(service: service, completionService: MemoryCompletionService())
         await model.loadIfNeeded()
         await service.configure(fails: true)
         await model.refresh()
@@ -91,7 +98,7 @@ struct TaskDashboardViewModelTests {
     func pendingLoadBlocksDuplicateAndShowsProgress() async {
         let service = DashboardTaskService()
         await service.configure(values: [example], suspend: true)
-        let model = TaskDashboardViewModel(service: service)
+        let model = TaskDashboardViewModel(service: service, completionService: MemoryCompletionService())
         let first = Task { await model.loadIfNeeded() }
         // Bounded waiting also permits a no-op implementation to fail without hanging.
         for _ in 0..<1000 {
@@ -112,7 +119,7 @@ struct TaskDashboardViewModelTests {
     func cancelledRequestCannotPublishLateResults() async {
         let service = DashboardTaskService()
         await service.configure(values: [example], suspend: true)
-        let model = TaskDashboardViewModel(service: service)
+        let model = TaskDashboardViewModel(service: service, completionService: MemoryCompletionService())
         let first = Task { await model.loadIfNeeded() }
         for _ in 0..<1000 {
             if await service.count > 0 { break }
@@ -131,7 +138,7 @@ struct TaskDashboardViewModelTests {
     func cancelledLoadDoesNotShowAnErrorAndCanRetry() async {
         let service = DashboardTaskService()
         await service.configure(suspend: true)
-        let model = TaskDashboardViewModel(service: service)
+        let model = TaskDashboardViewModel(service: service, completionService: MemoryCompletionService())
         let first = Task { await model.loadIfNeeded() }
         for _ in 0..<1000 {
             if await service.count > 0 { break }
@@ -152,7 +159,7 @@ struct TaskDashboardViewModelTests {
         let pending = example
         let completed = OperationalTask(id: 2, title: "Review report", completed: true, user: nil)
         await service.configure(values: [pending, completed])
-        let model = TaskDashboardViewModel(service: service)
+        let model = TaskDashboardViewModel(service: service, completionService: MemoryCompletionService())
         await model.loadIfNeeded()
         #expect(model.selectedFilter == .all)
         #expect(model.filteredTasks == [pending, completed])
@@ -170,7 +177,7 @@ struct TaskDashboardViewModelTests {
     func selectedFilterSurvivesRefreshAndCanHaveNoMatches() async {
         let service = DashboardTaskService()
         await service.configure(values: [example])
-        let model = TaskDashboardViewModel(service: service)
+        let model = TaskDashboardViewModel(service: service, completionService: MemoryCompletionService())
         model.selectedFilter = .completed
         await model.loadIfNeeded()
         #expect(model.filteredTasks.isEmpty)
