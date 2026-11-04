@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     let viewModel: AuthViewModel
+    let taskService: any TaskService
 
     var body: some View {
         Group {
@@ -29,11 +30,7 @@ struct ContentView: View {
             case .signedIn:
                 NavigationStack {
                     VStack {
-                        ContentUnavailableView(
-                            "Tasks",
-                            systemImage: "checklist",
-                            description: Text("Your operational tasks will appear here.")
-                        )
+                        TaskDashboardView(service: taskService)
                         if let message = viewModel.signOutMessage {
                             Text(message)
                                 .foregroundStyle(.red)
@@ -73,6 +70,10 @@ private struct PreviewAuthService: AuthService {
     func hasSession() async -> Bool { false }
 }
 
+private struct PreviewTaskService: TaskService {
+    nonisolated func fetchTasks() async throws -> [OperationalTask] { [] }
+}
+
 #Preview {
-    ContentView(viewModel: AuthViewModel(service: PreviewAuthService()))
+    ContentView(viewModel: AuthViewModel(service: PreviewAuthService()), taskService: PreviewTaskService())
 }

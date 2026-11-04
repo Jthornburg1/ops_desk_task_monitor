@@ -7,7 +7,7 @@ import SwiftUI
         WindowGroup {
             switch dependencies.state {
             case .ready(let viewModel):
-                ContentView(viewModel: viewModel)
+                ContentView(viewModel: viewModel, taskService: dependencies.taskService)
             case .configurationFailed:
                 ContentUnavailableView(
                     "Authentication setup failed",

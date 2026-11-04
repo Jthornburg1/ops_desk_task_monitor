@@ -29,6 +29,7 @@ enum CognitoConfiguration {
             plugins: ["awsCognitoAuthPlugin": pluginConfiguration]
         ))
 
+        try Amplify.add(plugin: AuthStageDiagnostic())
         try Amplify.add(plugin: AWSCognitoAuthPlugin())
         try Amplify.configure(configuration)
     }
