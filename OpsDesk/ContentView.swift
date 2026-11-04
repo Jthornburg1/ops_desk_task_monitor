@@ -31,7 +31,7 @@ struct ContentView: View {
                 if let userID = viewModel.userID {
                     NavigationStack {
                         VStack {
-                            TaskDashboardView(service: taskService, userID: userID)
+                            TaskDashboardView(service: taskService, userID: userID, userEmail: viewModel.userEmail)
                             if let message = viewModel.signOutMessage {
                                 Text(message)
                                     .foregroundStyle(.red)
@@ -69,6 +69,7 @@ struct ContentView: View {
 }
 
 private struct PreviewAuthService: AuthService {
+    func currentUserEmail() async -> String? { nil }
     func currentUserID() async -> String? { nil }
     func signOut() async -> SignOutOutcome { .failed }
 

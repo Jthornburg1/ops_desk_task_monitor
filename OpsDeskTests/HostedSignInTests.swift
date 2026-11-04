@@ -5,6 +5,7 @@ import Testing
 
 @MainActor
 private final class SignInService: AuthService {
+    func currentUserEmail() async -> String? { nil }
     func currentUserID() async -> String? { "test-user" }
     var outcome: SignInOutcome = .signedIn
     var signInCount = 0

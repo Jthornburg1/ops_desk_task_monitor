@@ -3,8 +3,10 @@ import SwiftUI
 struct TaskDashboardView: View {
     @State private var viewModel: TaskDashboardViewModel
     @State private var reloadID = 0
+    let userEmail: String?
 
-    init(service: any TaskService, userID: String) {
+    init(service: any TaskService, userID: String, userEmail: String?) {
+        self.userEmail = userEmail
         _viewModel = State(initialValue: TaskDashboardViewModel(
             service: service,
             completionService: UserDefaultsTaskCompletionService(userID: userID)))
@@ -19,6 +21,15 @@ struct TaskDashboardView: View {
             }
             .pickerStyle(.segmented)
             .padding()
+
+            if let userEmail {
+                Text(userEmail)
+                    .font(.caption)
+                    .foregroundStyle(.gray)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+            }
 
             List {
                 if viewModel.hasLoaded, let message = viewModel.errorMessage {

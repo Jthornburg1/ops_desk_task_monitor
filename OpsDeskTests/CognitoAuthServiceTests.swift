@@ -12,6 +12,24 @@ private enum SessionFailure: Error {
 
 @MainActor
 struct CognitoAuthServiceTests {
+    @Test
+    func readsEmailAttributeAndHandlesUnavailableEmail() async {
+        var calls = 0
+        let service = CognitoAuthService(fetchUserAttributes: {
+            calls += 1
+            return [AuthUserAttribute(.sub, value: "subject"),
+                    AuthUserAttribute(.email, value: "user@example.com")]
+        })
+        #expect(await service.currentUserEmail() == "user@example.com")
+        #expect(calls == 1)
+        let missing = CognitoAuthService(fetchUserAttributes: { [] })
+        #expect(await missing.currentUserEmail() == nil)
+        let empty = CognitoAuthService(fetchUserAttributes: { [AuthUserAttribute(.email, value: "")] })
+        #expect(await empty.currentUserEmail() == nil)
+        let failing = CognitoAuthService(fetchUserAttributes: { throw SessionFailure.unavailable })
+        #expect(await failing.currentUserEmail() == nil)
+    }
+
     @Test(arguments: [true, false])
     func mapsSDKSessionState(isSignedIn: Bool) async {
         var fetchCount = 0

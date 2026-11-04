@@ -18,6 +18,7 @@ enum AuthState {
 final class AuthViewModel {
     @ObservationIgnored private let service: any AuthService
     @ObservationIgnored private var isCheckingSession = false
+    private(set) var userEmail: String?
     private(set) var userID: String?
     private(set) var state: AuthState = .checkingSession
     
@@ -35,10 +36,12 @@ final class AuthViewModel {
 
         switch await service.signOut() {
         case .signedOut:
+            userEmail = nil
             userID = nil
             signInMessage = nil
             state = .signedOut
         case .locallySignedOut:
+            userEmail = nil
             userID = nil
             signInMessage = "Signed out on this device. Provider sign-out was incomplete; signing in may reuse your browser session."
             state = .signedOut
@@ -78,6 +81,7 @@ final class AuthViewModel {
         if await service.hasSession() {
             await identifySignedInUser()
         } else {
+            userEmail = nil
             userID = nil
             state = .signedOut
         }
@@ -85,11 +89,13 @@ final class AuthViewModel {
 
     private func identifySignedInUser() async {
         guard let id = await service.currentUserID(), !id.isEmpty else {
+            userEmail = nil
             userID = nil
             state = .signedOut
             signInMessage = "Unable to identify your account. Please sign in again."
             return
         }
+        userEmail = await service.currentUserEmail()
         userID = id
         signInMessage = nil
         state = .signedIn

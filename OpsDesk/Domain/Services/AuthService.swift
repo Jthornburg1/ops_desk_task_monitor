@@ -11,6 +11,7 @@ enum SignInOutcome {
 }
 
 protocol AuthService {
+    func currentUserEmail() async -> String?
     func currentUserID() async -> String?
     func hasSession() async -> Bool
     func signOut() async -> SignOutOutcome

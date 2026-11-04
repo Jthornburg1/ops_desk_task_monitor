@@ -3,12 +3,15 @@ import AWSCognitoAuthPlugin
 
 @MainActor
 final class CognitoAuthService: AuthService {
+    private let fetchUserAttributes: () async throws -> [AuthUserAttribute]
     private let fetchUserID: () async throws -> String
     private let hostedSignOut: () async -> any AuthSignOutResult
     private let hostedSignIn: () async throws -> Bool
     private let fetchSession: () async throws -> any AuthSession
 
-    init(fetchUserID: @escaping () async throws -> String = {
+    init(fetchUserAttributes: @escaping () async throws -> [AuthUserAttribute] = {
+        try await CognitoUserInfoService().fetchAttributes()
+    }, fetchUserID: @escaping () async throws -> String = {
         try await Amplify.Auth.getCurrentUser().userId
     }, fetchSession: @escaping () async throws -> any AuthSession = {
         try await Amplify.Auth.fetchAuthSession()
@@ -17,10 +20,18 @@ final class CognitoAuthService: AuthService {
     }, hostedSignOut: @escaping () async -> any AuthSignOutResult = {
         await Amplify.Auth.signOut()
     }) {
+        self.fetchUserAttributes = fetchUserAttributes
         self.fetchUserID = fetchUserID
         self.hostedSignOut = hostedSignOut
         self.hostedSignIn = hostedSignIn
         self.fetchSession = fetchSession
+    }
+
+    func currentUserEmail() async -> String? {
+        guard let attributes = try? await fetchUserAttributes(),
+              let email = attributes.first(where: { $0.key == .email })?.value,
+              !email.isEmpty else { return nil }
+        return email
     }
 
     func currentUserID() async -> String? {

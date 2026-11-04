@@ -7,6 +7,8 @@ private final class IdentityAuthService: AuthService {
     var id: String? = "user-a"
     var session = true
     var logout: SignOutOutcome = .signedOut
+    var email: String? = "first@example.com"
+    func currentUserEmail() async -> String? { email }
     func currentUserID() async -> String? { id }
     func hasSession() async -> Bool { session }
     func signIn() async -> SignInOutcome { session = true; return .signedIn }
@@ -77,25 +79,42 @@ struct TaskCompletionTests {
         let model = AuthViewModel(service: service)
         await model.checkSession()
         #expect(model.userID == "user-a")
+        #expect(model.userEmail == "first@example.com")
         service.logout = .failed
         await model.signOut()
         #expect(model.userID == "user-a")
+        #expect(model.userEmail == "first@example.com")
         service.logout = .signedOut
         await model.signOut()
         #expect(model.userID == nil)
+        #expect(model.userEmail == nil)
         service.id = "user-b"
+        service.email = "second@example.com"
         await model.signIn()
         #expect(model.userID == "user-b")
+        #expect(model.userEmail == "second@example.com")
         await model.signOut()
         service.id = nil
         await model.signIn()
         #expect(model.state == .signedOut)
         #expect(model.userID == nil)
+        #expect(model.userEmail == nil)
         #expect(model.signInMessage != nil)
         service.id = ""
         await model.checkSession()
         #expect(model.state == .signedOut)
         #expect(model.userID == nil)
+        #expect(model.userEmail == nil)
+    }
+
+    @Test
+    func missingEmailDoesNotPreventSignIn() async {
+        let service = IdentityAuthService()
+        service.email = nil
+        let model = AuthViewModel(service: service)
+        await model.checkSession()
+        #expect(model.state == .signedIn)
+        #expect(model.userEmail == nil)
     }
 
     @Test
