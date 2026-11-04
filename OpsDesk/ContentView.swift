@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     let viewModel: AuthViewModel
     let taskService: any TaskService
 
@@ -11,26 +12,47 @@ struct ContentView: View {
                 ProgressView("Checking your session…")
             case .signedOut:
                 ContentUnavailableView {
-                    Label("Sign in required", systemImage: "person.crop.circle")
+                    Label(viewModel.sessionMessage == nil ? "Sign in required" : "Session unavailable",
+                          systemImage: "person.crop.circle")
                 } description: {
-                    Text(viewModel.signInMessage ?? "Sign in to view your operational tasks.")
+                    Text(viewModel.sessionMessage ?? viewModel.signInMessage ?? "Sign in to view your operational tasks.")
                 } actions: {
-                    Button {
-                        Task { await viewModel.signIn() }
-                    } label: {
-                        if viewModel.isSigningIn {
-                            ProgressView("Signing in…")
-                        } else {
-                            Text("Sign in")
+                    if viewModel.sessionMessage != nil {
+                        Button("Retry session check") {
+                            Task { await viewModel.checkSession() }
                         }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(viewModel.isCheckingSession)
+                    } else {
+                        Button {
+                            Task { await viewModel.signIn() }
+                        } label: {
+                            if viewModel.isSigningIn {
+                                ProgressView("Signing in…")
+                            } else {
+                                Text("Sign in")
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(viewModel.isSigningIn)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(viewModel.isSigningIn)
                 }
             case .signedIn:
                 if let userID = viewModel.userID {
                     NavigationStack {
                         VStack {
+                            if let message = viewModel.sessionMessage {
+                                VStack {
+                                    Text(message)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Button("Retry session check") {
+                                        Task { await viewModel.checkSession() }
+                                    }
+                                    .disabled(viewModel.isCheckingSession)
+                                }
+                                .padding(.horizontal)
+                            }
                             TaskDashboardView(service: taskService, userID: userID, userEmail: viewModel.userEmail)
                             if let message = viewModel.signOutMessage {
                                 Text(message)
@@ -65,6 +87,11 @@ struct ContentView: View {
         .task {
             await viewModel.checkSession()
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await viewModel.checkSession() }
+            }
+        }
     }
 }
 
@@ -75,7 +102,7 @@ private struct PreviewAuthService: AuthService {
 
     func signIn() async -> SignInOutcome { .failed }
 
-    func hasSession() async -> Bool { false }
+    func sessionStatus() async -> SessionStatus { .signedOut }
 }
 
 private struct PreviewTaskService: TaskService {

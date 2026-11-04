@@ -1,3 +1,4 @@
+import AWSPluginsCore
 import Amplify
 import AWSCognitoAuthPlugin
 
@@ -61,12 +62,28 @@ final class CognitoAuthService: AuthService {
         }
     }
 
-    func hasSession() async -> Bool {
+    func sessionStatus() async -> SessionStatus {
         do {
+            // Amplify refreshes expired tokens when a usable refresh token exists.
             let session = try await fetchSession()
-            return session.isSignedIn
+            guard session.isSignedIn else { return .signedOut }
+            guard let provider = session as? any AuthCognitoTokensProvider else {
+                return .unavailable
+            }
+            // isSignedIn alone remains true even after refresh-token expiry.
+            let tokens = try provider.getCognitoTokens().get()
+            guard !tokens.accessToken.isEmpty, !tokens.idToken.isEmpty else {
+                return .unavailable
+            }
+            return .valid
+        } catch let error as AuthError {
+            switch error {
+            case .sessionExpired, .notAuthorized: return .expired
+            case .signedOut: return .signedOut
+            default: return .unavailable
+            }
         } catch {
-            return false
+            return .unavailable
         }
     }
 }

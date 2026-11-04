@@ -14,16 +14,16 @@ private final class SuspendedAuthService: AuthService {
     func currentUserEmail() async -> String? { nil }
     func currentUserID() async -> String? { "test-user" }
     private(set) var callCount = 0
-    private var sessionContinuation: CheckedContinuation<Bool, Never>?
+    private var sessionContinuation: CheckedContinuation<SessionStatus, Never>?
     private var startedContinuation: CheckedContinuation<Void, Never>?
 
     func signOut() async -> SignOutOutcome { .failed }
 
     func signIn() async -> SignInOutcome { .failed }
 
-    func hasSession() async -> Bool {
+    func sessionStatus() async -> SessionStatus {
         callCount += 1
-        guard callCount == 1 else { return false }
+        guard callCount == 1 else { return .signedOut }
 
         return await withCheckedContinuation { continuation in
             sessionContinuation = continuation
@@ -38,7 +38,7 @@ private final class SuspendedAuthService: AuthService {
     }
 
     func completeFirstCheck(sessionExists: Bool) {
-        sessionContinuation?.resume(returning: sessionExists)
+        sessionContinuation?.resume(returning: sessionExists ? .valid : .signedOut)
         sessionContinuation = nil
     }
 }
@@ -52,8 +52,8 @@ private struct StubAuthService: AuthService {
 
     func signIn() async -> SignInOutcome { .failed }
 
-    func hasSession() async -> Bool {
-        sessionExists
+    func sessionStatus() async -> SessionStatus {
+        sessionExists ? .valid : .signedOut
     }
 }
 

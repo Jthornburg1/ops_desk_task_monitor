@@ -17,7 +17,9 @@ enum AuthState {
 @Observable
 final class AuthViewModel {
     @ObservationIgnored private let service: any AuthService
-    @ObservationIgnored private var isCheckingSession = false
+    private(set) var isCheckingSession = false
+    @ObservationIgnored private var requiresSessionReset = false
+    private(set) var sessionMessage: String?
     private(set) var userEmail: String?
     private(set) var userID: String?
     private(set) var state: AuthState = .checkingSession
@@ -36,11 +38,15 @@ final class AuthViewModel {
 
         switch await service.signOut() {
         case .signedOut:
+            sessionMessage = nil
+            requiresSessionReset = false
             userEmail = nil
             userID = nil
             signInMessage = nil
             state = .signedOut
         case .locallySignedOut:
+            sessionMessage = nil
+            requiresSessionReset = false
             userEmail = nil
             userID = nil
             signInMessage = "Signed out on this device. Provider sign-out was incomplete; signing in may reuse your browser session."
@@ -52,10 +58,21 @@ final class AuthViewModel {
 
     func signIn() async {
         // MainActor serializes entry; the guard remains set across the await.
-        guard state == .signedOut, !isCheckingSession, !isSigningIn, !isSigningOut else { return }
+        guard state == .signedOut, sessionMessage == nil, !isCheckingSession, !isSigningIn, !isSigningOut else { return }
         isSigningIn = true
         signInMessage = nil
         defer { isSigningIn = false }
+
+        if requiresSessionReset {
+            // The SDK can retain signed-in state after expiry; reset before hosted sign-in.
+            switch await service.signOut() {
+            case .signedOut, .locallySignedOut:
+                requiresSessionReset = false
+            case .failed:
+                signInMessage = "Unable to reset your session. Please try again."
+                return
+            }
+        }
 
         switch await service.signIn() {
         case .signedIn:
@@ -78,12 +95,36 @@ final class AuthViewModel {
         isCheckingSession = true
         defer { isCheckingSession = false }
 
-        if await service.hasSession() {
+        switch await service.sessionStatus() {
+        case .valid:
+            sessionMessage = nil
+            requiresSessionReset = false
             await identifySignedInUser()
-        } else {
+        case .signedOut:
+            sessionMessage = nil
+            requiresSessionReset = false
+            if state == .signedIn {
+                signInMessage = "Your session has ended. Please sign in again."
+            }
             userEmail = nil
             userID = nil
             state = .signedOut
+        case .expired:
+            sessionMessage = nil
+            requiresSessionReset = true
+            userEmail = nil
+            userID = nil
+            signOutMessage = nil
+            signInMessage = "Your session has expired. Please sign in again."
+            state = .signedOut
+        case .unavailable:
+            sessionMessage = "Unable to verify your session. Check your connection and try again."
+            // A temporary failure is not proof of expiry. Preserve an existing dashboard.
+            if state != .signedIn {
+                userEmail = nil
+                userID = nil
+                state = .signedOut
+            }
         }
     }
 
@@ -95,6 +136,8 @@ final class AuthViewModel {
             signInMessage = "Unable to identify your account. Please sign in again."
             return
         }
+        sessionMessage = nil
+        signOutMessage = nil
         userEmail = await service.currentUserEmail()
         userID = id
         signInMessage = nil

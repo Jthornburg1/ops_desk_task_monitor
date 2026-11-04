@@ -1,9 +1,18 @@
+import AWSPluginsCore
 import Amplify
 import Testing
 @testable import OpsDesk
 
-private struct StubAuthSession: AuthSession {
+private struct StubTokens: AuthCognitoTokens {
+    let idToken = "test-id"
+    let accessToken = "test-access"
+    let refreshToken = "test-refresh"
+}
+
+private struct StubAuthSession: AuthSession, AuthCognitoTokensProvider {
     let isSignedIn: Bool
+    var tokenResult: Result<any AuthCognitoTokens, AuthError> = .success(StubTokens())
+    func getCognitoTokens() -> Result<any AuthCognitoTokens, AuthError> { tokenResult }
 }
 
 private enum SessionFailure: Error {
@@ -38,10 +47,10 @@ struct CognitoAuthServiceTests {
             return StubAuthSession(isSignedIn: isSignedIn)
         })
 
-        let hasSession = await service.hasSession()
+        let status = await service.sessionStatus()
 
         #expect(fetchCount == 1)
-        #expect(hasSession == isSignedIn)
+        #expect(status == (isSignedIn ? .valid : .signedOut))
     }
 
     @Test
@@ -52,9 +61,9 @@ struct CognitoAuthServiceTests {
             throw SessionFailure.unavailable
         })
 
-        let hasSession = await service.hasSession()
+        let status = await service.sessionStatus()
 
         #expect(fetchCount == 1)
-        #expect(!hasSession)
+        #expect(status == .unavailable)
     }
 }

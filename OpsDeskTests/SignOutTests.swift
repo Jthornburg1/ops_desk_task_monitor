@@ -13,7 +13,7 @@ private final class LogoutService: AuthService {
     var suspend = false
     var continuation: CheckedContinuation<SignOutOutcome, Never>?
     var started: CheckedContinuation<Void, Never>?
-    func hasSession() async -> Bool { sessionCount += 1; return true }
+    func sessionStatus() async -> SessionStatus { sessionCount += 1; return .valid }
     func signIn() async -> SignInOutcome { .signedIn }
     func signOut() async -> SignOutOutcome {
         count += 1

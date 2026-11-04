@@ -10,7 +10,7 @@ private final class IdentityAuthService: AuthService {
     var email: String? = "first@example.com"
     func currentUserEmail() async -> String? { email }
     func currentUserID() async -> String? { id }
-    func hasSession() async -> Bool { session }
+    func sessionStatus() async -> SessionStatus { session ? .valid : .signedOut }
     func signIn() async -> SignInOutcome { session = true; return .signedIn }
     func signOut() async -> SignOutOutcome { logout }
 }

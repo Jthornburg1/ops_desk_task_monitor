@@ -14,7 +14,7 @@ private final class SignInService: AuthService {
     var started: CheckedContinuation<Void, Never>?
     var suspend = false
 
-    func hasSession() async -> Bool { sessionCount += 1; return false }
+    func sessionStatus() async -> SessionStatus { sessionCount += 1; return .signedOut }
     func signOut() async -> SignOutOutcome { .failed }
 
     func signIn() async -> SignInOutcome {

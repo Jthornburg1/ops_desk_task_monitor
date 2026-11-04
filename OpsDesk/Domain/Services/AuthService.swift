@@ -10,10 +10,17 @@ enum SignInOutcome {
     case failed
 }
 
+enum SessionStatus {
+    case valid
+    case signedOut
+    case expired
+    case unavailable
+}
+
 protocol AuthService {
     func currentUserEmail() async -> String?
     func currentUserID() async -> String?
-    func hasSession() async -> Bool
+    func sessionStatus() async -> SessionStatus
     func signOut() async -> SignOutOutcome
     func signIn() async -> SignInOutcome
 }
