@@ -16,21 +16,42 @@ enum AuthState {
 @MainActor
 @Observable
 final class AuthViewModel {
-    @ObservationIgnored private let repository: any AuthRepository
+    @ObservationIgnored private let service: any AuthService
     @ObservationIgnored private var isCheckingSession = false
     private(set) var state: AuthState = .checkingSession
     
     private(set) var isSigningIn = false
     private(set) var signInMessage: String?
 
+    private(set) var isSigningOut = false
+    private(set) var signOutMessage: String?
+
+    func signOut() async {
+        guard state == .signedIn, !isCheckingSession, !isSigningIn, !isSigningOut else { return }
+        isSigningOut = true
+        signOutMessage = nil
+        defer { isSigningOut = false }
+
+        switch await service.signOut() {
+        case .signedOut:
+            signInMessage = nil
+            state = .signedOut
+        case .locallySignedOut:
+            signInMessage = "Signed out on this device. Provider sign-out was incomplete; signing in may reuse your browser session."
+            state = .signedOut
+        case .failed:
+            signOutMessage = "Unable to sign out. Please try again."
+        }
+    }
+
     func signIn() async {
         // MainActor serializes entry; the guard remains set across the await.
-        guard state == .signedOut, !isCheckingSession, !isSigningIn else { return }
+        guard state == .signedOut, !isCheckingSession, !isSigningIn, !isSigningOut else { return }
         isSigningIn = true
         signInMessage = nil
         defer { isSigningIn = false }
 
-        switch await repository.signIn() {
+        switch await service.signIn() {
         case .signedIn:
             state = .signedIn
         case .cancelled:
@@ -42,16 +63,16 @@ final class AuthViewModel {
         }
     }
 
-    init(repository: any AuthRepository) {
-        self.repository = repository
+    init(service: any AuthService) {
+        self.service = service
     }
     
     func checkSession() async {
-        guard !isCheckingSession, !isSigningIn else { return }
+        guard !isCheckingSession, !isSigningIn, !isSigningOut else { return }
         isCheckingSession = true
         defer { isCheckingSession = false }
 
-        let hasSession = await repository.hasSession()
+        let hasSession = await service.hasSession()
         state = hasSession ? .signedIn : .signedOut
     }
 }

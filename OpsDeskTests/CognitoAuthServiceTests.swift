@@ -11,16 +11,16 @@ private enum SessionFailure: Error {
 }
 
 @MainActor
-struct CognitoAuthRepositoryTests {
+struct CognitoAuthServiceTests {
     @Test(arguments: [true, false])
     func mapsSDKSessionState(isSignedIn: Bool) async {
         var fetchCount = 0
-        let repository = CognitoAuthRepository(fetchSession: {
+        let service = CognitoAuthService(fetchSession: {
             fetchCount += 1
             return StubAuthSession(isSignedIn: isSignedIn)
         })
 
-        let hasSession = await repository.hasSession()
+        let hasSession = await service.hasSession()
 
         #expect(fetchCount == 1)
         #expect(hasSession == isSignedIn)
@@ -29,12 +29,12 @@ struct CognitoAuthRepositoryTests {
     @Test
     func sessionFetchFailureDoesNotReportSignedIn() async {
         var fetchCount = 0
-        let repository = CognitoAuthRepository(fetchSession: {
+        let service = CognitoAuthService(fetchSession: {
             fetchCount += 1
             throw SessionFailure.unavailable
         })
 
-        let hasSession = await repository.hasSession()
+        let hasSession = await service.hasSession()
 
         #expect(fetchCount == 1)
         #expect(!hasSession)

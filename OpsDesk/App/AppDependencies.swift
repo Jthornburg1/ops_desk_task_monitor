@@ -13,7 +13,7 @@ final class AppDependencies {
     init(configureAuthentication: () throws -> Void) {
         do {
             try configureAuthentication()
-            state = .ready(AuthViewModel(repository: CognitoAuthRepository()))
+            state = .ready(AuthViewModel(service: CognitoAuthService()))
         } catch {
             // Do not expose SDK error details that might contain sensitive values.
             state = .configurationFailed

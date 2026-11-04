@@ -10,10 +10,12 @@ import Testing
 @testable import OpsDesk
 
 @MainActor
-private final class SuspendedAuthRepository: AuthRepository {
+private final class SuspendedAuthService: AuthService {
     private(set) var callCount = 0
     private var sessionContinuation: CheckedContinuation<Bool, Never>?
     private var startedContinuation: CheckedContinuation<Void, Never>?
+
+    func signOut() async -> SignOutOutcome { .failed }
 
     func signIn() async -> SignInOutcome { .failed }
 
@@ -39,9 +41,11 @@ private final class SuspendedAuthRepository: AuthRepository {
     }
 }
 
-private struct StubAuthRepository: AuthRepository {
+private struct StubAuthService: AuthService {
     var sessionExists = false
     
+    func signOut() async -> SignOutOutcome { .failed }
+
     func signIn() async -> SignInOutcome { .failed }
 
     func hasSession() async -> Bool {
@@ -52,7 +56,7 @@ private struct StubAuthRepository: AuthRepository {
 struct OpsDeskTests {
     @Test @MainActor
     func sessionStateChangesNotifyObservers() async {
-        let viewModel = AuthViewModel(repository: StubAuthRepository())
+        let viewModel = AuthViewModel(service: StubAuthService())
 
         await confirmation("Session state change notifies the UI") { changed in
             withObservationTracking {
@@ -68,30 +72,30 @@ struct OpsDeskTests {
 
     @Test @MainActor
     func overlappingSessionChecksDoNotDuplicateWork() async {
-        let repository = SuspendedAuthRepository()
-        let viewModel = AuthViewModel(repository: repository)
+        let service = SuspendedAuthService()
+        let viewModel = AuthViewModel(service: service)
         let firstCheck = Task { await viewModel.checkSession() }
-        await repository.waitUntilStarted()
+        await service.waitUntilStarted()
 
         await viewModel.checkSession()
 
-        #expect(repository.callCount == 1)
+        #expect(service.callCount == 1)
         #expect(viewModel.state == .checkingSession)
 
-        repository.completeFirstCheck(sessionExists: true)
+        service.completeFirstCheck(sessionExists: true)
         await firstCheck.value
         #expect(viewModel.state == .signedIn)
 
         // A completed check must not prevent a later lifecycle check.
         await viewModel.checkSession()
-        #expect(repository.callCount == 2)
+        #expect(service.callCount == 2)
         #expect(viewModel.state == .signedOut)
     }
     
     @Test @MainActor
     func checkSessionWithoutSavedUserSignsOut() async {
-        let repository = StubAuthRepository()
-        let viewModel = AuthViewModel(repository: repository)
+        let service = StubAuthService()
+        let viewModel = AuthViewModel(service: service)
         
         await viewModel.checkSession()
         #expect(viewModel.state == .signedOut)
@@ -99,8 +103,8 @@ struct OpsDeskTests {
     
     @Test @MainActor
     func checkSessionWithSavedUserSignsIn() async {
-        let repository = StubAuthRepository(sessionExists: true)
-        let viewModel = AuthViewModel(repository: repository)
+        let service = StubAuthService(sessionExists: true)
+        let viewModel = AuthViewModel(service: service)
         
         await viewModel.checkSession()
         
