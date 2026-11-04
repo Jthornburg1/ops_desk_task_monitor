@@ -5,6 +5,7 @@
 //  Created by jonathan thornburg on 11/2/26.
 //
 
+import Observation
 import Testing
 @testable import OpsDesk
 
@@ -45,6 +46,22 @@ private struct StubAuthRepository: AuthRepository {
 }
 
 struct OpsDeskTests {
+    @Test @MainActor
+    func sessionStateChangesNotifyObservers() async {
+        let viewModel = AuthViewModel(repository: StubAuthRepository())
+
+        await confirmation("Session state change notifies the UI") { changed in
+            withObservationTracking {
+                _ = viewModel.state
+            } onChange: {
+                changed()
+            }
+
+            await viewModel.checkSession()
+            #expect(viewModel.state == .signedOut)
+        }
+    }
+
     @Test @MainActor
     func overlappingSessionChecksDoNotDuplicateWork() async {
         let repository = SuspendedAuthRepository()

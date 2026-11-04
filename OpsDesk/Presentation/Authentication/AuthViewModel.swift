@@ -5,6 +5,8 @@
 //  Created by jonathan thornburg on 11/3/26.
 //
 
+import Observation
+
 enum AuthState {
     case checkingSession
     case signedOut
@@ -12,9 +14,10 @@ enum AuthState {
 }
 
 @MainActor
+@Observable
 final class AuthViewModel {
-    private let repository: any AuthRepository
-    private var isCheckingSession = false
+    @ObservationIgnored private let repository: any AuthRepository
+    @ObservationIgnored private var isCheckingSession = false
     private(set) var state: AuthState = .checkingSession
     
     init(repository: any AuthRepository) {

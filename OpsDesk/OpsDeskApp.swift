@@ -6,8 +6,8 @@ import SwiftUI
     var body: some Scene {
         WindowGroup {
             switch dependencies.state {
-            case .ready:
-                ContentView()
+            case .ready(let viewModel):
+                ContentView(viewModel: viewModel)
             case .configurationFailed:
                 ContentUnavailableView(
                     "Authentication setup failed",
