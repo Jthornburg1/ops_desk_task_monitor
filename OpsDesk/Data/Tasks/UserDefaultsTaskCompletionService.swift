@@ -13,9 +13,17 @@ final class UserDefaultsTaskCompletionService: TaskCompletionService {
 
     func overrides() -> [Int: Bool] {
         let saved = defaults.dictionary(forKey: key) as? [String: Bool] ?? [:]
-        return saved.reduce(into: [:]) { result, entry in
-            if let id = Int(entry.key) { result[id] = entry.value }
+        var overrides: [Int: Bool] = [:]
+
+        for (savedTaskID, completed) in saved {
+            guard let taskID = Int(savedTaskID) else {
+                continue
+            }
+
+            overrides[taskID] = completed
         }
+
+        return overrides
     }
 
     func setCompleted(_ completed: Bool, for taskID: Int) {
