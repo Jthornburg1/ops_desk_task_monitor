@@ -1,10 +1,10 @@
-//
-//  AuthRepository.swift
-//  OpsDesk
-//
-//  Created by jonathan thornburg on 11/3/26.
-//
+enum SignInOutcome {
+    case signedIn
+    case cancelled
+    case failed
+}
 
 protocol AuthRepository {
     func hasSession() async -> Bool
+    func signIn() async -> SignInOutcome
 }

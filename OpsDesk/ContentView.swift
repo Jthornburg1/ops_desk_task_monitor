@@ -9,11 +9,23 @@ struct ContentView: View {
             case .checkingSession:
                 ProgressView("Checking your session…")
             case .signedOut:
-                ContentUnavailableView(
-                    "Sign in required",
-                    systemImage: "person.crop.circle",
-                    description: Text("Sign in to view your operational tasks.")
-                )
+                ContentUnavailableView {
+                    Label("Sign in required", systemImage: "person.crop.circle")
+                } description: {
+                    Text(viewModel.signInMessage ?? "Sign in to view your operational tasks.")
+                } actions: {
+                    Button {
+                        Task { await viewModel.signIn() }
+                    } label: {
+                        if viewModel.isSigningIn {
+                            ProgressView("Signing in…")
+                        } else {
+                            Text("Sign in")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.isSigningIn)
+                }
             case .signedIn:
                 // Replaced by the task dashboard in a later increment.
                 ContentUnavailableView(
@@ -30,6 +42,8 @@ struct ContentView: View {
 }
 
 private struct PreviewAuthRepository: AuthRepository {
+    func signIn() async -> SignInOutcome { .failed }
+
     func hasSession() async -> Bool { false }
 }
 

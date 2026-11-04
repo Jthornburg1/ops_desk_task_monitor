@@ -15,6 +15,8 @@ private final class SuspendedAuthRepository: AuthRepository {
     private var sessionContinuation: CheckedContinuation<Bool, Never>?
     private var startedContinuation: CheckedContinuation<Void, Never>?
 
+    func signIn() async -> SignInOutcome { .failed }
+
     func hasSession() async -> Bool {
         callCount += 1
         guard callCount == 1 else { return false }
@@ -40,6 +42,8 @@ private final class SuspendedAuthRepository: AuthRepository {
 private struct StubAuthRepository: AuthRepository {
     var sessionExists = false
     
+    func signIn() async -> SignInOutcome { .failed }
+
     func hasSession() async -> Bool {
         sessionExists
     }
