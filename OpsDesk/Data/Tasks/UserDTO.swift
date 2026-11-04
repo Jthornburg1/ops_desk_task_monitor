@@ -1,4 +1,4 @@
-struct UserDTO: Decodable, Sendable {
+nonisolated struct UserDTO: Decodable, Sendable {
     let id: Int
     let name: String
     let username: String
